@@ -1,0 +1,6 @@
+{
+  "name": "Dota 2 Counterpick Assistant",
+  "description": "Помощник по подбору контрпиков в Dota 2 с экспертным анализом от Пуджа, каталогом всех 125 героев и стилем Dota 2 HUD",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

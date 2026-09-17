@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dota 2 Counterpick Assistant — Мясная лавка Пуджа</title>
+  <style>
+    /* -------------------------------------------------------------
+       DOTA 2 HUD DARK THEME — ЧИСТЫЙ CSS БЕЗ СТОРОННИХ БИБЛИОТЕК
+       Цвета: Глубокий черный фон, Radiant Crimson (#d32f2f, #ff4444),
+       Dire Vile Green (#2e7d32, #00e676), Золотистый HUD (#c29953).
+       ------------------------------------------------------------- */
+    :root {
+      --bg-dark: #080a0c;
+      --bg-card: rgba(16, 20, 26, 0.85);
+      --hud-border: #2a333d;
+      --hud-gold: #c29953;
+      --radiant-red: #ff3b30;
+      --dire-green: #00e676;
+      --text-main: #f0f3f6;
+      --text-muted: #8b9bb4;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(255, 59, 48, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(0, 230, 118, 0.08) 0%, transparent 45%),
+        linear-gradient(180deg, #090c10 0%, #050608 100%);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 16px 60px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 960px;
+    }
+
+    /* Верхний блок и цитата Пуджа */
+    .header-box {
+      text-align: center;
+      margin-bottom: 28px;
+      position: relative;
+    }
+
+    .badge-pudge {
+      display: inline-block;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #ffd54f;
+      background: rgba(194, 153, 83, 0.15);
+      border: 1px solid var(--hud-gold);
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ffffff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+      margin-bottom: 10px;
+    }
+
+    .pudge-speech {
+      background: rgba(22, 28, 36, 0.9);
+      border-left: 4px solid var(--radiant-red);
+      border-right: 4px solid var(--dire-green);
+      border-top: 1px solid var(--hud-border);
+      border-bottom: 1px solid var(--hud-border);
+      padding: 14px 20px;
+      border-radius: 6px;
+      font-size: 16px;
+      line-height: 1.5;
+      color: #e2e8f0;
+      margin: 16px auto 0;
+      max-width: 780px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .pudge-speech strong {
+      color: #ff5252;
+    }
+
+    /* HUD Каркас ввода */
+    .hud-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--hud-border);
+      border-radius: 8px;
+      padding: 24px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      margin-bottom: 32px;
+    }
+
+    /* Декоративные углы в стиле Dota 2 HUD */
+    .hud-panel::before, .hud-panel::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-color: var(--hud-gold);
+      border-style: solid;
+      pointer-events: none;
+    }
+    .hud-panel::before {
+      top: -1px;
+      left: -1px;
+      border-width: 2px 0 0 2px;
+    }
+    .hud-panel::after {
+      bottom: -1px;
+      right: -1px;
+      border-width: 0 2px 2px 0;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .search-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    @media (min-width: 640px) {
+      .search-row {
+        flex-direction: row;
+      }
+    }
+
+    .input-field {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #ffffff;
+      font-size: 17px;
+      padding: 14px 18px;
+      border-radius: 4px;
+      outline: none;
+      transition: all 0.25s ease;
+      font-family: inherit;
+    }
+
+    .input-field:focus {
+      border-color: var(--dire-green);
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.25);
+    }
+
+    .btn-counter {
+      background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+      color: #ffffff;
+      border: 1px solid #00e676;
+      font-size: 17px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 14px 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 230, 118, 0.4);
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-counter:hover {
+      background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
+      box-shadow: 0 0 22px rgba(0, 230, 118, 0.7);
+      transform: translateY(-1px);
+    }
+
+    .btn-counter:active {
+      transform: translateY(1px);
+    }
+
+    /* Быстрые подсказки героев */
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      align-items: center;
+    }
+
+    .chip-label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .chip-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid #30363d;
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip-btn:hover {
+      border-color: var(--hud-gold);
+      color: #ffffff;
+      background: rgba(194, 153, 83, 0.15);
+    }
+
+    /* Секция результатов: Топ-3 контрпика */
+    .results-heading {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .results-heading::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--hud-gold) 0%, transparent 100%);
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* Карточка контрпика с чистым CSS оформлением */
+    .hero-card {
+      background: #11161d;
+      border: 1px solid #232d38;
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .hero-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--hud-gold);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+
+    /* CSS-иконка героя с буквой-монограммой */
+    .hero-avatar {
+      width: 46px;
+      height: 46px;
+      background: radial-gradient(circle, #374151 0%, #1f2937 100%);
+      border: 2px solid var(--hud-gold);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 18px;
+      color: #ffd54f;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      flex-shrink: 0;
+    }
+
+    .hero-name {
+      font-size: 19px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .role-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: rgba(255, 59, 48, 0.15);
+      color: #ff6b6b;
+      border: 1px solid rgba(255, 59, 48, 0.3);
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--hud-gold);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .card-body {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin-bottom: 14px;
+      flex-grow: 1;
+    }
+
+    .items-container {
+      margin-bottom: 14px;
+    }
+
+    .items-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .item-tag {
+      background: #1c2430;
+      border: 1px solid #3b4859;
+      color: #93c5fd;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .tip-box {
+      background: rgba(0, 230, 118, 0.06);
+      border-left: 3px solid var(--dire-green);
+      padding: 10px;
+      border-radius: 0 4px 4px 0;
+      font-size: 13px;
+      color: #a7f3d0;
+      line-height: 1.4;
+    }
+
+    /* Сообщение об ошибке */
+    .error-box {
+      background: rgba(255, 59, 48, 0.12);
+      border: 1px solid var(--radiant-red);
+      padding: 16px;
+      border-radius: 6px;
+      color: #ff8585;
+      font-size: 15px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    /* Футер */
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header class="header-box">
+      <div class="badge-pudge">DOTA 2 TACTICS • МЯСНАЯ ЛАВКА</div>
+      <h1>Контрпики от Пуджа</h1>
+      <div class="pudge-speech" id="pudgeSpeech">
+        «Хе-хе, здорово, мясо! Введи супостатов противника через запятую, и я вытащу крюком трёх лучших мясников, которые сотрут их в порошок!»
+      </div>
+    </header>
+
+    <!-- Основной HUD-блок ввода -->
+    <main class="hud-panel">
+      <label class="input-label" for="enemyInput">Герои противника (от 1 до 5 через запятую):</label>
+      <div class="search-row">
+        <input 
+          type="text" 
+          id="enemyInput" 
+          class="input-field" 
+          placeholder="Например: Phantom Assassin, Sniper, Pudge"
+          value="Phantom Assassin, Sniper"
+        >
+        <button id="counterBtn" class="btn-counter">Подобрать контр</button>
+      </div>
+
+      <!-- Быстрые примеры -->
+      <div class="quick-chips">
+        <span class="chip-label">Быстрый выбор:</span>
+        <button class="chip-btn" onclick="setHeroes('Phantom Assassin')">Фантомка</button>
+        <button class="chip-btn" onclick="setHeroes('Sniper')">Снайпер</button>
+        <button class="chip-btn" onclick="setHeroes('Pudge')">Пудж</button>
+        <button class="chip-btn" onclick="setHeroes('Anti-Mage')">Антимаг</button>
+        <button class="chip-btn" onclick="setHeroes('Morphling')">Морфлинг</button>
+        <button class="chip-btn" onclick="setHeroes('Bristleback')">Бристлбек</button>
+      </div>
+
+      <div id="errorBox" class="error-box"></div>
+    </main>
+
+    <!-- Блок результатов -->
+    <section id="resultsSection">
+      <div class="results-heading">Топ-3 контрпика для текущей меты</div>
+      <div class="cards-grid" id="cardsGrid">
+        <!-- Карточки генерируются динамически через JavaScript -->
+      </div>
+    </section>
+
+    <footer>
+      Dota 2 Counterpick Assistant • Готово к размещению в Beget (public_html)
+    </footer>
+  </div>
+
+  <script>
+    // ====================================================================
+    // ВСТРОЕННАЯ БАЗА КОНТРПИКОВ ДЛЯ АВТОНОМНОЙ РАБОТЫ НА ХОСТИНГЕ BEGET
+    // ====================================================================
+    const HERO_DATABASE = {
+      "phantom assassin": {
+        name: "Phantom Assassin",
+        aliases: ["pa", "мортра", "mortred", "фантомка", "па"],
+        counters: [
+          {
+            hero: "Axe",
+            role: "Оффлейн",
+            abbr: "AX",
+            explanation: "Berserker's Call пробивает BKB, заставляя Мортру разбиваться о Blade Mail и пассивку Counter Helix.",
+            items: ["Blade Mail", "Blink Dagger"],
+            tip: "Прыгай на неё сразу, как она прыгает на союзников — она сама себя убьёт о твой возврат урона."
+          },
+          {
+            hero: "Tinker",
+            role: "Мид",
+            abbr: "TK",
+            explanation: "Лазер вешает 100% промах, полностью нейтрализуя криты и физ-урон до включения BKB.",
+            items: ["Blink Dagger", "Shiva's Guard"],
+            tip: "Держись на краю драки и слепи лазером в момент её инициации."
+          },
+          {
+            hero: "Lion",
+            role: "Саппорт",
+            abbr: "LI",
+            explanation: "Два мгновенных дизейбла (Хекс и Стан) и урон Finger of Death до нажатия вражеского BKB.",
+            items: ["Ghost Scepter", "Blink Dagger"],
+            tip: "Бери Ghost Scepter первым слотом: нажимай его при прыжке Мортред и давай хекс."
+          }
+        ]
+      },
+      "pudge": {
+        name: "Pudge",
+        aliases: ["пудж", "падж", "мясник", "бучер"],
+        counters: [
+          {
+            hero: "Lifestealer",
+            role: "Керри",
+            abbr: "LS",
+            explanation: "Rage игнорирует Rot, а пассивка Feast наносит урон от огромного запаса HP Пуджа.",
+            items: ["Armlet of Mordiggian", "Desolator"],
+            tip: "Не бойся хука — жми Rage и нарезай жирного мясника, ты лечишься от его здоровья."
+          },
+          {
+            hero: "Slark",
+            role: "Керри",
+            abbr: "SL",
+            explanation: "Сбрасывает замедление от Rot через Dark Pact и ворует статы у неповоротливого Пуджа.",
+            items: ["Diffusal Blade", "Eye of Skadi"],
+            tip: "Привязывай Pounce-ом и копи ловкость, не позволяя Пуджу кастовать ульт."
+          },
+          {
+            hero: "Silencer",
+            role: "Саппорт",
+            abbr: "SI",
+            explanation: "Global Silence сбивает ультимейт Dismember сквозь всю карту, спасая жертву хука.",
+            items: ["Force Staff", "Glimmer Cape"],
+            tip: "Держи Global Silence именно на момент, когда Пудж начнет кушать твоего союзника."
+          }
+        ]
+      },
+      "sniper": {
+        name: "Sniper",
+        aliases: ["снайпер", "дед", "карлик", "снайп"],
+        counters: [
+          {
+            hero: "Spirit Breaker",
+            role: "Оффлейн",
+            abbr: "SB",
+            explanation: "Charge of Darkness преодолевает всю карту, мгновенно сближаясь со Снайпером и держа в башах.",
+            items: ["Shadow Blade", "Black King Bar"],
+            tip: "Ставь варды во вражеский тыл и чарджись в деда в самом начале драки."
+          },
+          {
+            hero: "Storm Spirit",
+            role: "Мид",
+            abbr: "SS",
+            explanation: "Ball Lightning преодолевает любую дистанцию стрельбы и стирает Снайпера под Orchid.",
+            items: ["Orchid Malevolence", "Bloodstone"],
+            tip: "Влетай прямо на голову деда, игнорируя вражескую переднюю линию."
+          },
+          {
+            hero: "Clockwerk",
+            role: "Саппорт",
+            abbr: "CW",
+            explanation: "Hookshot достает Снайпера издалека, а коги лишают возможности стрелять с дистанции.",
+            items: ["Blade Mail", "Force Staff"],
+            tip: "Запирай Снайпера в коги — батарейки сбивают анимацию стрельбы и кастов."
+          }
+        ]
+      },
+      "anti-mage": {
+        name: "Anti-Mage",
+        aliases: ["ам", "антимаг", "am", "antimage"],
+        counters: [
+          {
+            hero: "Legion Commander",
+            role: "Оффлейн",
+            abbr: "LC",
+            explanation: "Duel запрещает блинкаться и нажимать Counterspell, убивая АМа о Blade Mail.",
+            items: ["Blink Dagger", "Blade Mail"],
+            tip: "Покупай быстрый Блинк и лови АМа в лесу, когда он потратит Blink на крипов."
+          },
+          {
+            hero: "Disruptor",
+            role: "Саппорт",
+            abbr: "DS",
+            explanation: "Glimpse возвращает АМа после блинка, а Static Storm с Aghanim накладывает мут и сайленс.",
+            items: ["Aghanim's Scepter", "Glimmer Cape"],
+            tip: "Жди, пока он прыгнет блинком, и сразу кастуй Glimpse."
+          },
+          {
+            hero: "Meepo",
+            role: "Мид",
+            abbr: "MP",
+            explanation: "Заканчивает игру быстрым пушем до того, как Антимаг нафармит защитные слоты.",
+            items: ["Blink Dagger", "Diffusal Blade"],
+            tip: "Пушь вышки на 15-й минуте с Аегисом: АМ с одним Battle Fury беспомощен."
+          }
+        ]
+      },
+      "morphling": {
+        name: "Morphling",
+        aliases: ["морф", "морфлинг", "morph"],
+        counters: [
+          {
+            hero: "Ancient Apparition",
+            role: "Саппорт",
+            abbr: "AA",
+            explanation: "Ice Blast полностью запрещает лечение и перекачку Attribute Shift в силу.",
+            items: ["Aghanim's Shard", "Force Staff"],
+            tip: "Кидай ульт в центр замеса — под дебаффом Морф мгновенно погибает при попытке перекачки."
+          },
+          {
+            hero: "Lion",
+            role: "Саппорт",
+            abbr: "LI",
+            explanation: "Мгновенный контроль и прокаст Finger of Death убивают Морфа до реакции на перекачку.",
+            items: ["Blink Dagger", "Ghost Scepter"],
+            tip: "Прыгай из тумана через Хекс, пока Морф держит малое HP в ловкости."
+          },
+          {
+            hero: "Outworld Destroyer",
+            role: "Мид",
+            abbr: "OD",
+            explanation: "Чистый урон Arcane Orb игнорирует броню Морфа, а Sanity's Eclipse наносит урон по разнице маны.",
+            items: ["Force Staff", "Black King Bar"],
+            tip: "Прячь Морфа в Astral при попытке сбежать на перекачке."
+          }
+        ]
+      },
+      "bristleback": {
+        name: "Bristleback",
+        aliases: ["брист", "еж", "бб", "bristleback"],
+        counters: [
+          {
+            hero: "Viper",
+            role: "Мид",
+            abbr: "VP",
+            explanation: "Nethertoxin отключает пассивную защиту со спины и выброс колючек (Break).",
+            items: ["Dragon Lance", "Aghanim's Scepter"],
+            tip: "Лей Nethertoxin под ноги Бристлу и расстреливай с расстояния."
+          },
+          {
+            hero: "Legion Commander",
+            role: "Оффлейн",
+            abbr: "LC",
+            explanation: "Duel разворачивает Бристлбека лицом, лишая снижения урона со спины.",
+            items: ["Blade Mail", "Silver Edge"],
+            tip: "Купи Silver Edge для наложения Break перед дуэлью."
+          },
+          {
+            hero: "Shadow Demon",
+            role: "Саппорт",
+            abbr: "SD",
+            explanation: "Demonic Purge с Aghanim накладывает истощение сквозь BKB.",
+            items: ["Aghanim's Scepter", "Glimmer Cape"],
+            tip: "Вешай ультимейт на Бристла в каждой драке, нейтрализуя пассивки."
+          }
+        ]
+      }
+    };
+
+    function normalize(str) {
+      return str.toLowerCase().replace(/[^a-zA-Zа-яА-Я0-9]/g, '').trim();
+    }
+
+    function findHero(query) {
+      const q = normalize(query);
+      if (!q) return null;
+      for (const [key, data] of Object.entries(HERO_DATABASE)) {
+        if (normalize(key) === q || normalize(data.name) === q) return data;
+        for (const a of data.aliases) {
+          if (normalize(a) === q || q.includes(normalize(a))) return data;
+        }
+      }
+      return null;
+    }
+
+    function calculateCounters() {
+      const input = document.getElementById('enemyInput').value.trim();
+      const errorBox = document.getElementById('errorBox');
+      const cardsGrid = document.getElementById('cardsGrid');
+      const speech = document.getElementById('pudgeSpeech');
+
+      errorBox.style.display = 'none';
+      cardsGrid.innerHTML = '';
+
+      if (!input) {
+        errorBox.textContent = 'Эй, салага! Введи хотя бы одного вражеского героя (от 1 до 5), Пудж не может хукать пустоту!';
+        errorBox.style.display = 'block';
+        speech.innerHTML = '«Пусто в котле! Напиши имена героев через запятую, например: <strong>Sniper, Phantom Assassin</strong>!»';
+        return;
+      }
+
+      const tokens = input.split(',').map(s => s.trim()).filter(Boolean);
+
+      if (tokens.length > 5) {
+        errorBox.textContent = `Врагов максимум 5, а ты ввёл ${tokens.length}! Сократи список до 5.`;
+        errorBox.style.display = 'block';
+        speech.innerHTML = '«Воу, притормози коней! Врагов всего пять, а не целая армия!»';
+        return;
+      }
+
+      const found = [];
+      const unknown = [];
+
+      tokens.forEach(t => {
+        const h = findHero(t);
+        if (h) found.push(h);
+        else unknown.push(t);
+      });
+
+      if (unknown.length > 0) {
+        errorBox.textContent = `Не удалось распознать героя: "${unknown[0]}". Проверь правописание (например: Sniper, PA, Pudge, Morphling).`;
+        errorBox.style.display = 'block';
+        speech.innerHTML = `«Э-э, кого ты назвал? <strong>«${unknown[0]}»</strong>? Такого в Доте я ещё на зуб не пробовал!»`;
+        return;
+      }
+
+      // Собираем контрпики
+      const countersPool = [];
+      const seen = new Set();
+
+      found.forEach(h => {
+        h.counters.forEach(c => {
+          if (!seen.has(c.hero)) {
+            countersPool.push(c);
+            seen.add(c.hero);
+          }
+        });
+      });
+
+      const top3 = countersPool.slice(0, 3);
+
+      speech.innerHTML = '«Крюком тебя! <strong>Этот герой — мой ужин!</strong> Вот тебе 3 лучших контрпика под текущую мету:»';
+
+      top3.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'hero-card';
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="hero-avatar">${c.abbr}</div>
+            <div>
+              <div class="hero-name">${c.hero}</div>
+              <span class="role-badge">${c.role}</span>
+            </div>
+          </div>
+          <div class="section-title">Механика контры</div>
+          <div class="card-body">${c.explanation}</div>
+          <div class="items-container">
+            <div class="section-title">Ключевые предметы</div>
+            <div class="items-list">
+              ${c.items.map(it => `<span class="item-tag">${it}</span>`).join('')}
+            </div>
+          </div>
+          <div class="tip-box">
+            <strong>Совет:</strong> ${c.tip}
+          </div>
+        `;
+        cardsGrid.appendChild(card);
+      });
+    }
+
+    function setHeroes(val) {
+      document.getElementById('enemyInput').value = val;
+      calculateCounters();
+    }
+
+    document.getElementById('counterBtn').addEventListener('click', calculateCounters);
+    document.getElementById('enemyInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') calculateCounters();
+    });
+
+    // Инициализация при первой загрузке
+    calculateCounters();
+  </script>
+</body>
+</html>
